@@ -1,0 +1,116 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <cstring>
+
+using namespace std;
+
+class Graph {
+    int V; // Number of vertices
+    vector<vector<int>> capacity; // Capacity matrix
+    vector<vector<int>> adj; // Adjacency list
+
+public:
+    Graph(int V);
+
+    // Function to add an edge with a given capacity
+    void addEdge(int u, int v, int cap);
+
+    // BFS to find the augmenting path
+    bool bfs(int source, int sink, vector<int>& parent);
+
+    // The Edmonds-Karp implementation of Ford-Fulkerson algorithm
+    int edmondsKarp(int source, int sink);
+};
+
+// Constructor to initialize the graph
+Graph::Graph(int V) {
+    this->V = V;
+    capacity.resize(V, vector<int>(V, 0));
+    adj.resize(V);
+}
+
+// Adds an edge to the graph with a given capacity
+void Graph::addEdge(int u, int v, int cap) {
+    capacity[u][v] = cap;
+    adj[u].push_back(v);
+    adj[v].push_back(u); // Add reverse edge with 0 capacity
+}
+
+// BFS to find if there's an augmenting path from source to sink
+bool Graph::bfs(int source, int sink, vector<int>& parent) {
+    vector<bool> visited(V, false);
+    queue<int> q;
+
+    q.push(source);
+    visited[source] = true;
+    parent[source] = -1;
+
+    while (!q.empty()) {
+        int u = q.front();
+        q.pop();
+
+        for (int v : adj[u]) {
+            if (!visited[v] && capacity[u][v] > 0) { // If v is not visited and there's available capacity
+                q.push(v);
+                visited[v] = true;
+                parent[v] = u;
+
+                if (v == sink) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// The Edmonds-Karp implementation of the Ford-Fulkerson algorithm
+int Graph::edmondsKarp(int source, int sink) {
+    int maxFlow = 0;
+    vector<int> parent(V);
+
+    // Augment the flow while there is an augmenting path
+    while (bfs(source, sink, parent)) {
+        int pathFlow = INT_MAX;
+
+        // Find the maximum flow through the path found by BFS
+        for (int v = sink; v != source; v = parent[v]) {
+            int u = parent[v];
+            pathFlow = min(pathFlow, capacity[u][v]);
+        }
+
+        // Update capacities of the edges and reverse edges along the path
+        for (int v = sink; v != source; v = parent[v]) {
+            int u = parent[v];
+            capacity[u][v] -= pathFlow;
+            capacity[v][u] += pathFlow;
+        }
+
+        maxFlow += pathFlow;
+    }
+
+    return maxFlow;
+}
+
+int main() {
+    // Create a graph with 6 vertices (0 to 5)
+    Graph g(6);
+
+    // Add edges with capacities
+    g.addEdge(0, 1, 16);
+    g.addEdge(0, 2, 13);
+    g.addEdge(1, 2, 10);
+    g.addEdge(1, 3, 12);
+    g.addEdge(2, 1, 4);
+    g.addEdge(2, 4, 14);
+    g.addEdge(3, 2, 9);
+    g.addEdge(3, 5, 20);
+    g.addEdge(4, 3, 7);
+    g.addEdge(4, 5, 4);
+
+    int source = 0, sink = 5;
+    cout << "Maximum Flow: " << g.edmondsKarp(source, sink) << endl;
+
+    return 0;
+}
