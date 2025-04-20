@@ -1,0 +1,92 @@
+#include <bits/stdc++.h>
+using namespace std;
+using ll = long long;
+const ll INF = 1e14;
+struct E{int v, rev; ll c;};
+int N;
+vector<vector<E>> G;
+void add(int u,int v,ll c){
+    G[u].push_back({v,(int)G[v].size(),c});
+    G[v].push_back({u,(int)G[u].size()-1,0});
+}
+vector<int> lvl, ptr;
+bool bfs(int s,int t){
+    lvl.assign(N,-1);
+    queue<int>q; q.push(s); lvl[s]=0;
+    while(!q.empty()){
+        int u=q.front(); q.pop();
+        for(auto &e:G[u]) if(lvl[e.v]<0 && e.c>0){
+            lvl[e.v]=lvl[u]+1;
+            q.push(e.v);
+        }
+    }
+    return lvl[t]>=0;
+}
+ll dfs(int u,int t,ll f){
+    if(u==t||f==0) return f;
+    for(int &i=ptr[u];i<(int)G[u].size();i++){
+        auto &e=G[u][i];
+        if(lvl[e.v]==lvl[u]+1 && e.c>0){
+            if(ll p=dfs(e.v,t,min(f,e.c))){
+                e.c-=p; G[e.v][e.rev].c+=p;
+                return p;
+            }
+        }
+    }
+    return 0;
+}
+ll dinic(int s,int t){
+    ll flow=0, f;
+    while(bfs(s,t)){
+        ptr.assign(N,0);
+        while((f=dfs(s,t,INF))) flow+=f;
+    }
+    return flow;
+}
+int main(){
+    ios::sync_with_stdio(false);
+    cin.tie(NULL);
+
+    int n,m,c;
+    cin>>n>>m>>c;
+    vector<string> a(m);
+    for(int i=0;i<m;i++) cin>>a[i];
+    vector<ll> cost(c);
+    for(int i=0;i<c;i++) cin>>cost[i];
+
+    int cells = n*m;
+    int S=-1, T;
+    // each cell v has nodes v_in = 2*v, v_out = 2*v+1
+    N = 2*cells + 2;
+    G.assign(N, {});
+    T = N-1;
+
+    auto id_in = [&](int i,int j){ return 2*(i*n+j); };
+    auto id_out= [&](int i,int j){ return 2*(i*n+j)+1; };
+
+    for(int i=0;i<m;i++) for(int j=0;j<n;j++){
+        char ch = a[i][j];
+        ll w = INF;
+        if(ch>='a'&&ch<'a'+c) w=cost[ch-'a'];
+        // cannot barricade B or '.': INF
+        int u=id_in(i,j), v=id_out(i,j);
+        add(u,v,w);
+        if(ch=='B') S=v;
+        // adjacency
+        static int dx[4]={1,-1,0,0}, dy[4]={0,0,1,-1};
+        for(int d=0;d<4;d++){
+            int ni=i+dx[d], nj=j+dy[d];
+            if(ni<0||ni>=m||nj<0||nj>=n) continue;
+            add(v, id_in(ni,nj), INF);
+        }
+        // boundary→sink
+        if(i==0||i==m-1||j==0||j==n-1){
+            add(v, T, INF);
+        }
+    }
+
+    ll f = dinic(S, T);
+    if(f >= INF/2) cout<<-1;
+    else cout<<f;
+    return 0;
+}
